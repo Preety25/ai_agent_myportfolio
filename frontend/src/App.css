@@ -1,0 +1,4 @@
+/* Transparent app shell so the widget can float over the parent Framer page */
+.App {
+  background: transparent;
+}

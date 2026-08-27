@@ -1,0 +1,132 @@
+{
+  "theme": "light",
+  "typography": {
+    "fonts": {
+      "heading": "Space Mono, monospace",
+      "body": "Space Mono, monospace",
+      "accent": "Inter, sans-serif"
+    },
+    "hierarchy": {
+      "h1": "text-2xl sm:text-3xl tracking-tight font-bold",
+      "h2": "text-xl sm:text-2xl tracking-tight font-semibold",
+      "body": "text-base leading-relaxed",
+      "small": "text-sm",
+      "tiny": "text-xs uppercase tracking-widest"
+    }
+  },
+  "colors": {
+    "primary": "#FF8A8A",
+    "primary-light": "#FFEAE8",
+    "secondary": "#E0D8FB",
+    "background": "#FFFCFA",
+    "surface": "#FFFFFF",
+    "text-main": "#1C1C1E",
+    "text-muted": "#6C6C70",
+    "error": "#FF4444",
+    "border": "#E5E5EA",
+    "palette": {
+      "coral": {
+        "50": "#FFF1F0",
+        "100": "#FFE3E0",
+        "200": "#FFC5C0",
+        "300": "#FFA7A0",
+        "400": "#FF8A8A",
+        "500": "#FF6B6B",
+        "600": "#FF4C4C"
+      },
+      "lavender": {
+        "50": "#F7F5FE",
+        "100": "#EFEBFC",
+        "200": "#E0D8FB",
+        "300": "#C9BBF7",
+        "400": "#B29EF3"
+      },
+      "cream": {
+        "50": "#FFFCFA",
+        "100": "#FFF8F2"
+      }
+    }
+  },
+  "visual_enhancers": {
+    "shadows": {
+      "sm": "0 2px 8px rgba(0,0,0,0.04)",
+      "md": "0 8px 24px rgba(0,0,0,0.08)",
+      "lg": "0 16px 48px rgba(0,0,0,0.12)",
+      "glow": "0 0 20px rgba(255, 138, 138, 0.4)"
+    },
+    "radii": {
+      "card": "24px",
+      "pill": "9999px",
+      "bubble": "18px"
+    },
+    "glass": "backdrop-blur-xl bg-white/80 border border-white/20"
+  },
+  "component_name": "PortfolioVoiceWidget",
+  "grids": {
+    "tool_cards": "grid grid-cols-1 gap-3",
+    "prompts": "flex flex-wrap gap-2"
+  },
+  "layouts": {
+    "desktop": "fixed bottom-6 right-6 w-[380px] max-h-[700px] h-[85vh] flex flex-col bg-cream-50 rounded-3xl shadow-lg border border-coral-100 overflow-hidden z-50",
+    "mobile": "fixed inset-x-0 bottom-0 top-auto w-full max-h-[90vh] h-auto flex flex-col bg-cream-50 rounded-t-3xl shadow-lg z-50 rounded-b-none",
+    "header": "flex items-center justify-between p-4 border-b border-coral-50",
+    "chat_area": "flex-1 overflow-y-auto p-4 space-y-4",
+    "input_area": "p-4 border-t border-coral-50 bg-white"
+  },
+  "motion": {
+    "spring": "transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+    "fade_in": "animate-in fade-in zoom-in duration-300",
+    "slide_up": "animate-in slide-in-from-bottom-full duration-400 ease-out",
+    "pulse_glow": "animate-pulse shadow-glow",
+    "spin_slow": "animate-[spin_8s_linear_infinite]"
+  },
+  "accessibility": {
+    "contrast": "Ensure coral text and borders meet at least 4.5:1 ratio against cream backgrounds. Use text-shadow if needed over gradients.",
+    "aria": "Add aria-labels to all icon buttons (mic, send, close, toggle).",
+    "focus": "Use focus:ring-2 focus:ring-coral-400 focus:outline-none for interactive elements."
+  },
+  "media": {
+    "breakpoints": {
+      "sm": "640px",
+      "md": "768px"
+    }
+  },
+  "image_urls": {
+    "avatar": {
+      "url": "https://framerusercontent.com/images/h9UWzVS0GFejRKji4HoNlFneB7U.jpg",
+      "description": "Preeti's portrait from portfolio"
+    },
+    "case_study_thumbnails": [
+      {
+        "url": "https://images.unsplash.com/photo-1587355760421-b9de3226a046?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzR8MHwxfHNlYXJjaHwzfHx1eCUyMGRlc2lnbiUyMGNhc2UlMjBzdHVkeSUyMGFic3RyYWN0fGVufDB8fHx8MTc4Nzg2NDUyNXww&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract UI wireframing thumbnail"
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Build a standalone React + Tailwind CSS widget (not the whole portfolio).",
+    "The component must render a 'Floating Trigger' initially (a circular button with animated curved text 'Ask Pinky' using SVG textPath and a soft coral aura).",
+    "When clicked, open the conversational interface (Bottom sheet on mobile, floating card on desktop).",
+    "Use Framer Motion for opening/closing the chat panel.",
+    "Implement the UI with these mocked states: Connecting, Listening, User speaking, Agent speaking, Text conversation, Tool recommendation, Error, Microphone permission, Ended. Provide a way to cycle through these states for demonstration (e.g. debug buttons or a sequential mock flow).",
+    "Typography: Use Space Mono for all conversational text, ensuring a distinct 'developer/designer' aesthetic.",
+    "User Bubbles: Lavender/light purple background (#E0D8FB), no borders, right-aligned.",
+    "Agent Bubbles: Cream/transparent background, left-aligned.",
+    "Tool Recommendation Cards: Render an 'Absorb Case study' pill with the provided thumbnail URL and an arrow icon.",
+    "Voice Mode State: Render a large centered soft pink/coral gradient orb with a waveform (bars) and a stop button underneath.",
+    "Error State: Render as a red pill banner with monospace text 'Microphone access is off. Please allow access.'",
+    "Include 'Voice' toggle pill and mic button in the text input area.",
+    "DO NOT use raw <input type='text'> if it breaks Shadcn UI norms, but for this custom widget, standard React inputs styled with Tailwind are fine. Ensure the text input looks like a pill with a coral border.",
+    "Add 'data-testid' attributes to all interactive elements."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) where appropriate.",
+    "NEVER use universal transition like 'transition: all' globally. Apply transitions to specific properties.",
+    "NEVER center align the app container globally.",
+    "Always use modern button styles (pill-shaped) with interaction animations & relevant colors.",
+    "Every interaction needs micro-animations - hover states, transitions, entrance animations.",
+    "Use generous spacing; cramped designs look cheap.",
+    "Use lucide-react for icons (Mic, Send, X, ArrowUpRight, etc.)."
+  ]
+}
