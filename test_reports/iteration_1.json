@@ -1,0 +1,25 @@
+{
+  "summary": "Frontend-only testing of the 'Ask Pinky' portfolio widget at https://portfolio-voice-chat.preview.emergentagent.com/. Verified BUG1 (no microphone permission requested during typing/sending text), BUG2 (text session initialized, agent responded, error banner shown on server disconnect), CV client-side flow, mic button, Voice pill mic prompt, error banner behavior, and Close X confirmation dialog. All 8 tested behaviors passed.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AgentPanel.jsx line ~115: 'unexpected disconnect' effect uses wasConnectedRef.current which is only set on the connected effect. Because the effect fires on every status/sessionMode change and immediately resets wasConnectedRef=false after firing once, subsequent transient reconnect->disconnect cycles won't re-trigger the banner. Acceptable current design but noted.",
+    "PortfolioAgent.jsx: handleClose clears transcript after 350ms with setTimeout — if user quickly reopens within the window they may lose messages. Minor.",
+    "useSpeechToText: the recognition object is re-created whenever onResult/onError identities change; since ChatInput passes inline arrow fns, the effect re-runs on every render. Consider useCallback in ChatInput to avoid unnecessary teardown/re-init of the recognition object.",
+    "Error banner text is centered but the dismiss X takes 20px on the right without symmetrical spacing on the left — minor visual asymmetry."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "The ElevenLabs agent's Security Allowlist currently does NOT include the preview origin. Result: text sessions successfully connect, the agent DOES reply once ('Hi, I can help you explore Preeti's experience, projects, design approach, skills, and impact...'), then the server sends 'Server error: Unknown error' and the socket closes. The widget correctly surfaces the red #FF3333 error banner 'Connection error. Please try again later.' with dismiss X. Voice mode has the same server-side drop behavior. All widget-side behavior is correct. Data-testids verified: pinky-floating-button, pinky-agent-panel, pinky-text-input, pinky-send-button, pinky-mic-button, pinky-voice-toggle, pinky-error-banner, pinky-msg-user, pinky-msg-agent, pinky-msg-tool, pinky-voice-orb, pinky-stop-button, pinky-close-button, pinky-close-confirm, pinky-close-cancel, pinky-prompt-show-me-your-cv. getUserMedia spy confirmed: 0 calls during panel open, typing, and sending text; 3 calls only after Voice pill click (initial getUserMedia({audio:true}) from AgentPanel + 2 internal SDK/LiveKit calls). CV suggested prompt is fully client-side (no session, no network).",
+  "test_credentials": "None required (public widget, no auth).",
+  "rca of the issue": "N/A — no widget bugs found. The 'Server error: Unknown error' after connect is an ElevenLabs-side allowlist misconfiguration (documented in the review request as out of widget's control) and is handled gracefully by the error banner."
+}

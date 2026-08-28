@@ -168,6 +168,8 @@ export const PortfolioAgent = () => {
      SDK never has more than one active session in flight. */
   return (
     <ConversationProvider
+      key={sessionMode}
+      textOnly={sessionMode === "text"}
       onMessage={providerOnMessage}
       onError={providerOnError}
     >

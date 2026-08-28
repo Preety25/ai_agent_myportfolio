@@ -83,12 +83,19 @@ export const AgentPanel = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionMode]);
 
-  /* On `connected`, mute mic in text mode & dispatch any pending text */
+  /* On `connected`, mute mic in voice mode when unwanted &
+     dispatch any pending text message. */
   useEffect(() => {
     if (sessionMode === "idle") return;
     if (status !== "connected") return;
 
-    try { setMuted(sessionMode === "text"); } catch (e) { /* silent */ }
+    // Only touch mute state in voice mode. In text mode the provider
+    // was created with `textOnly: true`, so no audio context / mic
+    // exists to mute in the first place — calling setMuted would
+    // throw.
+    if (sessionMode === "voice") {
+      try { setMuted(false); } catch (e) { /* silent */ }
+    }
     wasConnectedRef.current = true;
 
     if (sessionMode !== "text") return;
