@@ -50,7 +50,8 @@ export const AgentPanel = ({
 
   usePortfolioTools({ onToolInvoked });
 
-  /* Single connect effect — fires exactly once per mode transition */
+  /* Single connect effect — fires when sessionMode transitions OR
+     when sessionEpoch is bumped (reconnect after end-of-turn drop). */
   useEffect(() => {
     if (sessionMode === "idle") {
       try { endSession(); } catch (e) { /* silent */ }
@@ -59,9 +60,13 @@ export const AgentPanel = ({
     }
     let cancelled = false;
     setError(null);
+    wasConnectedRef.current = false;
 
     (async () => {
       try {
+        // Guarantee no orphan session from a previous connect run.
+        try { await endSession(); } catch (e) { /* silent */ }
+        if (cancelled) return;
         if (sessionMode === "voice") {
           await navigator.mediaDevices.getUserMedia({ audio: true });
         }
@@ -73,13 +78,26 @@ export const AgentPanel = ({
         // unreachable or the API key lacks `convai_write`, we
         // gracefully fall back to the plain agentId path (which works
         // if the allowlist is correctly configured).
+        //
+        // NOTE: For text mode we deliberately prefer plain `agentId`
+        // over signed URLs. Signed URLs are one-turn: the server
+        // closes the WebSocket after the first agent reply, breaking
+        // multi-turn conversations. Voice mode still uses the
+        // conversation token because WebRTC needs it for the LiveKit
+        // handshake.
         let sessionArgs = { agentId: AGENT_ID };
         const overrides =
           sessionMode === "voice" && VOICE_FIRST_MESSAGE
             ? { agent: { firstMessage: VOICE_FIRST_MESSAGE } }
-            : undefined;
+            : sessionMode === "text"
+              ? { conversation: { textOnly: true } }
+              : undefined;
         if (overrides) sessionArgs.overrides = overrides;
 
+        // Fetch signed URL (text) or conversation token (voice) so
+        // ElevenLabs accepts the connection regardless of the agent's
+        // origin allowlist. Fall back to plain agentId if the auth
+        // endpoint fails (e.g. API key missing convai_write).
         try {
           const authRes = await fetch(
             `${BACKEND_URL}/api/pinky/auth?mode=${sessionMode}`
@@ -124,21 +142,15 @@ export const AgentPanel = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionMode]);
 
-  /* On `connected`, mute mic in voice mode when unwanted &
-     dispatch any pending text message. */
+  /* On `connected`, dispatch pending text or apply mic mute for voice. */
   useEffect(() => {
     if (sessionMode === "idle") return;
     if (status !== "connected") return;
 
-    // Only touch mute state in voice mode. In text mode the provider
-    // was created with `textOnly: true`, so no audio context / mic
-    // exists to mute in the first place — calling setMuted would
-    // throw.
     if (sessionMode === "voice") {
       try { setMuted(false); } catch (e) { /* silent */ }
     }
     wasConnectedRef.current = true;
-
     if (sessionMode !== "text") return;
     if (!pendingMessage) return;
     if (consumedRef.current === pendingMessage.id) return;
@@ -152,12 +164,25 @@ export const AgentPanel = ({
     }
   }, [sessionMode, status, pendingMessage, sendUserMessage, setMuted, onPendingConsumed]);
 
-  /* Detect unexpected disconnect */
+  /* Track whether the agent has produced a reply in this session — a
+     disconnect AFTER a reply is treated as a normal end-of-turn and
+     should not surface the red error banner. */
+  const hadAgentReplyRef = useRef(false);
+  useEffect(() => {
+    if ((messages || []).some((m) => m.role === "agent")) {
+      hadAgentReplyRef.current = true;
+      // Clear any stale error banner as soon as a real reply lands
+      setError(null);
+    }
+  }, [messages]);
+
+  /* Detect unexpected disconnect (before the first reply lands). */
   useEffect(() => {
     if (
       wasConnectedRef.current &&
       status === "disconnected" &&
-      sessionMode !== "idle"
+      sessionMode !== "idle" &&
+      !hadAgentReplyRef.current
     ) {
       setError({ kind: "network", text: "Connection error. Please try again later." });
       wasConnectedRef.current = false;

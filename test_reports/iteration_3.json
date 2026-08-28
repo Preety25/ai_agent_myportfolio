@@ -1,0 +1,63 @@
+{
+  "summary": "Backend /api/pinky/auth now returns 200 with valid signed_url (text) and conversation_token (voice) — all 5 pytest cases pass. UI layout (bottom-right position, 112->88px shrink, 8px gap between panel and button, arc-text hidden when active) verified pixel-accurate. Intro animation guard works: text is identical after clicking CV prompt (no re-render/animation). CV prompt correctly stays client-side (no auth call). VOICE mode successfully fetches auth, uses conversation_token, opens LiveKit and joins room, but ElevenLabs agent immediately responds 'Server error: Unknown error' and disconnects (agent-side config issue, not widget). TEXT mode has TWO critical issues: (a) code never fetches /api/pinky/auth?mode=text (branch is voice-only in AgentPanel.jsx), directly contradicting the spec point #4 verification criteria; (b) the plain-agentId text WebSocket to wss://api.elevenlabs.io/v1/convai/conversation opens then closes immediately with no frames, so NO agent-role bubble ever renders — primary success criterion fails and 'Connection error' banner shows.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Text-mode first-message send",
+        "issue": "AgentPanel.jsx connect effect never calls /api/pinky/auth for sessionMode==='text' — auth fetch is gated by `if (sessionMode === 'voice')` (lines 100-123). Spec (item #4) and verification criterion explicitly require the widget to hit /api/pinky/auth?mode=text on first typed send. Verified via Playwright network capture: zero requests to /api/pinky/auth?mode=text.",
+        "affected_selectors": ["pinky-text-input", "pinky-send-button"],
+        "priority": "HIGH"
+      },
+      {
+        "flow": "Text-mode first agent reply",
+        "issue": "Widget opens wss://api.elevenlabs.io/v1/convai/conversation?agent_id=... with plain agentId (no signed URL / no conversation_signature); ElevenLabs closes the socket immediately (no frames received) and startSession rejects, triggering 'Connection error' banner. NO pinky-msg-agent bubble ever appears. Since backend already returns a valid signed_url with convai_write, the fix is to fetch /api/pinky/auth?mode=text and pass its signed_url to startSession (per spec even though it's single-turn, the first-message reply is the stated success criterion).",
+        "affected_selectors": ["pinky-msg-agent", "pinky-error-banner"],
+        "priority": "CRITICAL"
+      },
+      {
+        "flow": "Voice-mode session",
+        "issue": "Voice path is wired correctly (auth 200 -> conversation_token -> LiveKit room joins, mic publishes) but ElevenLabs signals 'Server error: Unknown error' immediately after track publish and closes the room. Widget shows 'Connection error' banner. Likely ElevenLabs agent-side rejection (agent config / allowlist / voice policy) — outside widget code. Logging the raw error object would help RCA (currently console logs empty errorType/code/debugMessage).",
+        "affected_selectors": ["pinky-voice-orb", "pinky-error-banner"],
+        "priority": "HIGH"
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_pinky_auth.py",
+    "/app/test_reports/pytest/pinky_auth_results.xml"
+  ],
+  "verified_behaviors": [
+    "GET /api/pinky/auth?mode=text -> 200 {mode:'text', signed_url:'wss://api.elevenlabs.io/v1/convai/conversation?agent_id=...&conversation_signature=cvtkn_...', conversation_token:null, agent_id:'agent_...'}",
+    "GET /api/pinky/auth?mode=voice -> 200 {mode:'voice', conversation_token:'eyJhbGci...', signed_url:null, agent_id:'agent_...'}",
+    "GET /api/pinky/auth?mode=badmode -> 422 (Pydantic pattern validation)",
+    "GET /api/pinky/auth (no mode) -> 200, defaults to text",
+    "Floating button box = {x:1784, y:944, w:112, h:112} at 1920x1080 -> distance from right=24, from bottom=24 -> confirms bottom-right anchor",
+    "After open: floating button box = {w:88, h:88}, arc 'Ask Pinky' SVG not visible (screenshot 02), panel box top-y (360) + height (600) = 960; button top-y = 968 -> gap = 8px exactly",
+    "IntroMessage: text before and after clicking pinky-prompt-show-me-your-cv is byte-identical; per-word animate flag `hasAnimatedOnce` prevents re-animation on ConversationProvider remount",
+    "CV prompt is client-side: sending it produces user bubble + 'Open Resume' tool bubble with NO /api/pinky/auth request",
+    "Voice flow issues GET /api/pinky/auth?mode=voice (200) then opens wss://livekit.rtc.elevenlabs.io/rtc/v1?access_token=<token>, joins room, publishes mic track — confirms conversation_token wiring end-to-end",
+    "agent.config.js exports VOICE_FIRST_MESSAGE = \"Hi, I'm Pinky, Preeti's portfolio twin...\"; AgentPanel.jsx lines 92-98 attach overrides.agent.firstMessage only when sessionMode==='voice' and textOnly=true only when sessionMode==='text'"
+  ],
+  "action_items": [
+    "AgentPanel.jsx: extend the auth-fetch branch to also run for sessionMode==='text' (fetch /api/pinky/auth?mode=text and, per spec, discard the signed_url and continue with agentId — OR use the signed_url so the first reply actually arrives). Test criteria explicitly requires (a) the endpoint be hit AND (b) an agent reply bubble to render. Using the signed_url is the simplest way to satisfy (b).",
+    "Text-mode plain-agentId WebSocket is being closed by ElevenLabs immediately. Either the agent's allowlist needs this origin whitelisted, or the widget should use the signed_url from /api/pinky/auth?mode=text (which we verified returns a valid wss:// URL with conversation_signature).",
+    "Voice-mode LiveKit connection reaches 'connected' state then agent server sends 'Server error: Unknown error' with empty errorType/code — likely agent config issue on ElevenLabs side; investigate agent voice/model config and check ElevenLabs dashboard logs for the conversation id. Enhance the error surfacing in AgentPanel error handler to include the raw provider error for future debugging."
+  ],
+  "critical_code_review_comments": [
+    "server.py: logger still declared AFTER endpoint definitions (line 154). If any request handler used `logger` at import time it would NameError; currently safe at runtime but confusing. Move logging config near the top.",
+    "server.py: sync `requests.get` inside a def (not async def) blocks the event loop under load. Switch to httpx.AsyncClient + async def get_pinky_auth.",
+    "server.py: uses deprecated @app.on_event('shutdown'); migrate to lifespan handler.",
+    "AgentPanel.jsx: the auth-fetch code path is duplicated logic between text/voice; refactor to always fetch and branch on returned payload (signed_url vs conversation_token). This would fix the text-mode omission naturally.",
+    "AgentPanel.jsx: 'Connection error. Please try again later.' is a black-box message. Include e?.message / e?.details in dev-mode banner or console for RCA."
+  ],
+  "updated_files": ["/app/backend/tests/test_pinky_auth.py"],
+  "success_rate": { "backend": "100% (5/5)", "frontend": "UI/layout 100%; text-mode integration 0% (no agent reply); voice-mode wiring 100% but agent-server rejects" },
+  "seed_data_creation": "None",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend endpoint is fully working. Do NOT retest multi-turn per user note. Focus retest on: (1) text send triggers /api/pinky/auth?mode=text network call (Playwright request interception on that exact URL), (2) first agent bubble (data-testid='pinky-msg-agent') appears within ~10s of send. Voice server-error is an ElevenLabs agent-config issue, likely out of scope for widget code fixes; document but don't block on it. Key data-testids: pinky-floating-button, pinky-agent-panel, pinky-intro, pinky-prompt-show-me-your-cv, pinky-text-input, pinky-send-button, pinky-msg-user, pinky-msg-agent, pinky-error-banner, pinky-voice-toggle, pinky-voice-orb.",
+  "rca of the issue": "AgentPanel.jsx wraps the auth fetch inside `if (sessionMode === 'voice') { ... }` (lines 100-123). The text branch never runs the fetch and directly calls startSession({agentId, overrides:{conversation:{textOnly:true}}}). ElevenLabs then rejects the unauthenticated agent WebSocket (allowlist check) and closes the socket → startSession promise rejects → catch block sets the network-error banner. Fix: move the auth-fetch outside the voice-only guard so text mode also fetches /api/pinky/auth?mode=text. Optionally pass the returned signed_url to startSession({signedUrl}) instead of {agentId} for text — this will get the first-message reply through even with the single-turn signed-URL limitation the team already acknowledged."
+}

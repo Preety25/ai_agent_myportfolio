@@ -1,0 +1,44 @@
+{
+  "summary": "Frontend-only retest of the two PRIMARY flows after AgentPanel.jsx auth-fetch fix (fetch now unguarded for both modes). ALL primary criteria PASS. TEXT MODE: GET /api/pinky/auth?mode=text is now called on first typed send (verified via Playwright request interception), signed_url is passed to startSession({signedUrl}), and a pinky-msg-agent bubble appears within ~5s ('Hi! I can help you quickly explore Preeti's product design experience... What are you trying to figure out? No question is too small.'). Intro remains visible, NO pinky-error-banner. VOICE MODE: GET /api/pinky/auth?mode=voice is called, pinky-voice-orb renders correctly, LiveKit handshake and mic publish succeed — ElevenLabs agent then still emits 'Server error: Unknown error {errorType: undefined, code: undefined}' and disconnects (agent-server-side issue, out of widget scope as per request). SANITY: 'Show me your CV' prompt remains fully client-side — no /api/pinky/auth call, user bubble + Open Resume tool bubble render as expected.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Voice-mode ElevenLabs agent handshake",
+        "issue": "After successful GET /api/pinky/auth?mode=voice (200) + LiveKit signal connect + mic publish, ElevenLabs agent server emits 'Server error: Unknown error' with all fields (errorType/code/debugMessage/details) undefined and closes the room (WS 1006). This is server-side (ElevenLabs agent config / voice policy / model), NOT a widget defect. Same signature as iteration 3.",
+        "affected_selectors": ["pinky-voice-orb", "pinky-error-banner"],
+        "priority": "MEDIUM (out of widget scope per request)"
+      }
+    ],
+    "design_issues": []
+  },
+  "verified_behaviors": [
+    "Sanity CV prompt: 0 requests to /api/pinky/auth; 1 pinky-msg-user bubble + Open Resume tool bubble render correctly",
+    "Text-mode primary: exactly 1 GET request to https://portfolio-voice-chat.preview.emergentagent.com/api/pinky/auth?mode=text captured after clicking pinky-send-button",
+    "Text-mode primary: pinky-msg-agent element becomes visible within timeout (well under 15s)",
+    "Text-mode primary: intro (pinky-intro) still visible after agent reply, no pinky-error-banner shown",
+    "Voice-mode primary: exactly 1 GET request to /api/pinky/auth?mode=voice captured, pinky-voice-orb renders, LiveKit connects (signal connected -> room joined -> publishing track -> connected)",
+    "AgentPanel.jsx lines 101-125: fetch is now outside the voice-only guard; text branch consumes authData.signed_url and passes as { signedUrl } to startSession"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_pinky_auth.py (prior iteration)"
+  ],
+  "action_items": [
+    "None for widget code — both PRIMARY flows meet acceptance criteria.",
+    "(Follow-up, non-blocking) Voice-mode 'Server error: Unknown error' remains: investigate ElevenLabs agent dashboard logs for conversation id emitted during LiveKit connect (visible in browser console as room=room_agent_...). This is agent-server-side."
+  ],
+  "critical_code_review_comments": [
+    "AgentPanel.jsx: successfully deduplicated the auth branch (single fetch, branches on payload). Clean fix.",
+    "AgentPanel.jsx line 136: 'Connection error. Please try again later.' still masks provider details. Consider surfacing e?.message in dev/debug mode for future RCA (already emitted to console as '[pinky] provider error ...', good).",
+    "server.py (unchanged from iter 3): still uses sync requests.get inside sync def handler for /api/pinky/auth — non-blocking for this app's load but should migrate to httpx.AsyncClient for concurrency.",
+    "server.py (unchanged): still uses deprecated @app.on_event('shutdown'); migrate to lifespan handler."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (frontend-only retest)", "frontend": "100% on both PRIMARY flows + SANITY. Voice ElevenLabs agent error is out-of-scope per request." },
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "AgentPanel.jsx auth-fetch fix is confirmed working. Text mode gets first agent reply via signed_url; voice mode still hits an ElevenLabs-server-side 'Unknown error' post-LiveKit handshake — this is an ElevenLabs agent config issue outside the widget. Multi-turn text is a known SDK single-turn limitation (out of scope). Key data-testids preserved: pinky-floating-button, pinky-agent-panel, pinky-intro, pinky-prompt-show-me-your-cv, pinky-text-input, pinky-send-button, pinky-msg-user, pinky-msg-agent, pinky-error-banner, pinky-voice-toggle, pinky-voice-orb.",
+  "rca of the issue": "Iteration 3 bug root cause: auth fetch was gated inside `if (sessionMode === 'voice')` so text mode fell through to plain-agentId WS which ElevenLabs immediately closed. Fix (verified this iteration): the fetch is now unconditional and returns signed_url for text / conversation_token for voice; text mode calls startSession({ signedUrl }) which succeeds and delivers the first agent turn."
+}

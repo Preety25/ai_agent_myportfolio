@@ -35,6 +35,7 @@ export const PortfolioAgent = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [transcript, setTranscript] = useState([]);
   const [sessionMode, setSessionMode] = useState("idle");
+  const [sessionEpoch, setSessionEpoch] = useState(0);
   const [pendingMessage, setPendingMessage] = useState(null);
   const [nudge, setNudge] = useState(false);
   const pendingCounter = useRef(0);
@@ -115,7 +116,13 @@ export const PortfolioAgent = () => {
       // Everything else → send to ElevenLabs text session (KB-powered)
       pendingCounter.current += 1;
       setPendingMessage({ id: pendingCounter.current, text: clean });
-      if (sessionMode !== "text") setSessionMode("text");
+      if (sessionMode !== "text") {
+        setSessionMode("text");
+      } else {
+        // Force a fresh session for subsequent turns — the WebSocket
+        // is one-turn from ElevenLabs' side.
+        setSessionEpoch((v) => v + 1);
+      }
     },
     [appendMessage, sessionMode]
   );
@@ -168,12 +175,12 @@ export const PortfolioAgent = () => {
      SDK never has more than one active session in flight. */
   return (
     <ConversationProvider
-      key={sessionMode}
+      key={`${sessionMode}-${sessionEpoch}`}
       textOnly={sessionMode === "text"}
       onMessage={providerOnMessage}
       onError={providerOnError}
     >
-      <FloatingButton onClick={handleOpen} isOpen={isOpen} showNudge={nudge} />
+      <FloatingButton onClick={handleOpen} isActive={isOpen} showNudge={nudge} />
       {isOpen && (
         <AgentPanel
           sessionMode={sessionMode}
