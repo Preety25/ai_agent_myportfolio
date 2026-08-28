@@ -1,0 +1,42 @@
+{
+  "summary": "Verified /api/pinky/auth endpoint (text/voice modes) returns graceful 401 with ElevenLabs 'missing convai_write permission' message, and confirmed the widget's frontend falls back to plain agentId auth on 401. Voice-mode overrides.agent.firstMessage wiring confirmed via code review. All 5 backend pytest cases pass; frontend integration observed via live network + console capture.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_pinky_auth.py",
+    "/app/test_reports/pytest/pinky_auth_results.xml"
+  ],
+  "verified_behaviors": [
+    "GET /api/pinky/auth?mode=text -> 401 {\"detail\":\"The API key you used is missing the permission convai_write to execute this operation.\"} (propagated from ElevenLabs)",
+    "GET /api/pinky/auth?mode=voice -> 401 with same permission-related detail",
+    "GET /api/pinky/auth?mode=invalid -> 422 validation error (Pydantic regex on Query param)",
+    "GET /api/pinky/auth (no mode) -> defaults to text, 401",
+    "Frontend text send: network shows GET /api/pinky/auth?mode=text -> 401, console warns '[pinky] /pinky/auth returned 401 - falling back to agentId auth', session still proceeds via agentId",
+    "Frontend voice click: network shows GET /api/pinky/auth?mode=voice -> 401, same fallback warning, followed by SDK direct call to https://api.elevenlabs.io/v1/convai/conversation/token?agent_id=... confirming agentId fallback path",
+    "agent.config.js exports VOICE_FIRST_MESSAGE = \"Hi, I'm Pinky, Preeti's portfolio twin...\"",
+    "AgentPanel.jsx connect effect (lines 77-81) attaches overrides: { agent: { firstMessage: VOICE_FIRST_MESSAGE } } ONLY when sessionMode === 'voice'"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py: `logger` is defined AFTER `app.include_router(api_router)` and after the endpoint definitions. It works at request-time (module-level init completes before requests) but is fragile; move logging config to top of file for clarity.",
+    "server.py: endpoint uses synchronous `requests.get(...)` inside a non-async handler; fine for now, but under load consider `httpx.AsyncClient` with an async handler to avoid blocking the event loop.",
+    "server.py: on-shutdown handler uses deprecated FastAPI @app.on_event('shutdown'); consider lifespan handler.",
+    "Frontend AgentPanel: the connect effect fetches auth even on repeated mode toggles; no caching. Acceptable for now given very cheap endpoint; note for future optimization."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_pinky_auth.py (new)"
+  ],
+  "success_rate": {"backend": "100% (5/5)", "frontend": "100% (fallback verified for text and voice)"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Widget uses data-testid: pinky-floating-button, pinky-text-input, pinky-send-button, pinky-voice-toggle, pinky-mic-button, pinky-stop-button. Backend /api/pinky/auth returns 401 until user regenerates ELEVENLABS_API_KEY with convai_write scope; when they do, endpoint should return 200 with signed_url (text) or conversation_token (voice) and frontend will use those instead of falling back. Voice mode shows 'Connection error' UI banner because LiveKit rejects unauthenticated agent connections — this is expected until convai_write is granted and is explicitly out of scope per the review request.",
+  "rca of the issue": "N/A - no bugs found. The 401 from ElevenLabs is the expected, documented behavior for the current API key scope; the backend surfaces a clean JSON error and the frontend's fallback is exercised correctly."
+}

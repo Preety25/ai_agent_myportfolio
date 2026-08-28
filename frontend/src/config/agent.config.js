@@ -10,6 +10,15 @@
 // ElevenLabs agent (public agent, no signed URL needed)
 export const AGENT_ID = "agent_2701m10g8nw5eec80qzjx5m7ke5c";
 
+// Backend origin for signed-URL / WebRTC-token minting
+export const BACKEND_URL =
+  process.env.REACT_APP_BACKEND_URL || "";
+
+// Greeting the agent speaks the moment a voice session connects.
+// Set to null to fall back to the agent's server-side firstMessage.
+export const VOICE_FIRST_MESSAGE =
+  "Hi, I'm Pinky, Preeti's portfolio twin. Ask me anything about her work, projects, or design approach — I'm all ears.";
+
 // Parent-page origin allow-list for postMessage
 export const ALLOWED_PARENT_ORIGINS = [
   "https://preetyux.work",

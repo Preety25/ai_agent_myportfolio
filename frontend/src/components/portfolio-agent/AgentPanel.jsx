@@ -14,7 +14,7 @@ import { ChatInput } from "./ChatInput";
 import { VoiceOrb } from "./VoiceOrb";
 import { ConversationControls } from "./ConversationControls";
 import { CloseConfirm } from "./CloseConfirm";
-import { AGENT_ID } from "../../config/agent.config";
+import { AGENT_ID, BACKEND_URL, VOICE_FIRST_MESSAGE } from "../../config/agent.config";
 import { usePortfolioTools } from "../../hooks/usePortfolioTools";
 
 /**
@@ -66,7 +66,48 @@ export const AgentPanel = ({
           await navigator.mediaDevices.getUserMedia({ audio: true });
         }
         if (cancelled) return;
-        await startSession({ agentId: AGENT_ID });
+
+        // Fetch a signed-URL / conversation-token from our backend so
+        // ElevenLabs accepts the connection even when the agent's
+        // allowlist doesn't include this origin. If the backend is
+        // unreachable or the API key lacks `convai_write`, we
+        // gracefully fall back to the plain agentId path (which works
+        // if the allowlist is correctly configured).
+        let sessionArgs = { agentId: AGENT_ID };
+        const overrides =
+          sessionMode === "voice" && VOICE_FIRST_MESSAGE
+            ? { agent: { firstMessage: VOICE_FIRST_MESSAGE } }
+            : undefined;
+        if (overrides) sessionArgs.overrides = overrides;
+
+        try {
+          const authRes = await fetch(
+            `${BACKEND_URL}/api/pinky/auth?mode=${sessionMode}`
+          );
+          if (authRes.ok) {
+            const authData = await authRes.json();
+            if (sessionMode === "voice" && authData.conversation_token) {
+              sessionArgs = { ...sessionArgs, conversationToken: authData.conversation_token };
+              delete sessionArgs.agentId;
+            } else if (sessionMode === "text" && authData.signed_url) {
+              sessionArgs = { ...sessionArgs, signedUrl: authData.signed_url };
+              delete sessionArgs.agentId;
+            }
+          } else {
+            // eslint-disable-next-line no-console
+            console.warn(
+              "[pinky] /pinky/auth returned",
+              authRes.status,
+              "- falling back to agentId auth"
+            );
+          }
+        } catch (fetchErr) {
+          // eslint-disable-next-line no-console
+          console.warn("[pinky] auth fetch failed, using agentId fallback", fetchErr);
+        }
+
+        if (cancelled) return;
+        await startSession(sessionArgs);
       } catch (e) {
         if (cancelled) return;
         if (e && (e.name === "NotAllowedError" || e.name === "SecurityError")) {

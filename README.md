@@ -25,26 +25,30 @@ All URLs, mappings, allow-lists, and copy live in **one file**:
 - `open_linkedin()`
 
 ## ElevenLabs agent configuration (IMPORTANT)
-The agent is public (no signed URL required). If you have configured
-an **Allowlist** on the agent's *Security* tab, you MUST add the
-origin the widget is served from — for the current preview build:
+The agent is public. There are two ways to bypass the agent's origin allowlist:
 
+**Option A — Backend signed URL (recommended, already wired up)**
+1. Set `ELEVENLABS_API_KEY` in `backend/.env` (already done).
+2. **Key must have the `convai_write` permission scope.** If you see
+   a 401 with `missing_permissions` in the backend log, open
+   ElevenLabs → your profile → API keys → your key → Permissions →
+   enable **Conversational AI: Write** and re-save. The widget already
+   calls `/api/pinky/auth?mode=text|voice` and uses either
+   `signedUrl` (WebSocket) or `conversationToken` (WebRTC) before
+   `startSession`. If the request fails it falls back to plain
+   `agentId` auth.
+
+**Option B — Allowlist the origin (fallback)**
+Add the widget origin to the agent's *Security → Allowlist*:
 ```
 portfolio-voice-chat.preview.emergentagent.com
-```
-
-…and, once you're ready to embed the widget on the live site:
-
-```
 preetyux.work
 www.preetyux.work
 ```
+(or delete the allowlist entirely so any origin is accepted).
 
-If the allowlist is empty the agent accepts any origin. Symptom of a
-missing allowlist entry: the session briefly reaches `connected` and
-then immediately drops with `Server error: Unknown error` / LiveKit
-data-channel abort. The widget will surface this as the red
-"Connection error. Please try again later." banner.
+If the allowlist is empty and no signed URL is available, the agent
+will accept any origin (behaviour of a fully public agent).
 
 ## Embedding on Framer
 See `frontend/src/lib/postMessage.js` for the message contract. Add an
