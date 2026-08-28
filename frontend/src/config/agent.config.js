@@ -24,21 +24,21 @@ export const PROJECTS = {
     title: "Absorb Case study",
     url: "https://preetyux.work/absorb-case-study",
     thumbnail:
-      "https://images.unsplash.com/photo-1587355760421-b9de3226a046?crop=entropy&cs=srgb&fm=jpg&w=200&q=80",
+      "https://customer-assets-eiarnc6j.emergentagent.net/job_portfolio-voice-chat/artifacts/lm7qn7lw_Mockup_Absorb.webp",
   },
   omnee: {
     id: "omnee",
     title: "Omnee Case study",
     url: "https://preetyux.work/omnee",
     thumbnail:
-      "https://images.unsplash.com/photo-1587355760421-b9de3226a046?crop=entropy&cs=srgb&fm=jpg&w=200&q=80",
+      "https://customer-assets-eiarnc6j.emergentagent.net/job_portfolio-voice-chat/artifacts/zgfb9bf0_Omnee_mockup.webp",
   },
   manulife: {
     id: "manulife",
     title: "Manulife Case study",
     url: "https://preetyux.work/manulife",
     thumbnail:
-      "https://images.unsplash.com/photo-1587355760421-b9de3226a046?crop=entropy&cs=srgb&fm=jpg&w=200&q=80",
+      "https://customer-assets-eiarnc6j.emergentagent.net/job_portfolio-voice-chat/artifacts/5yig11kj_Manulife_mockup.webp",
   },
 };
 
@@ -77,7 +77,7 @@ export const INTRO_MESSAGE =
   "I am Pinky, Preeti's portfolio twin...\n\nAsk me anything about her work or experience and I'll do my best to answer!";
 
 export const AVATAR_URL =
-  "https://framerusercontent.com/images/h9UWzVS0GFejRKji4HoNlFneB7U.jpg";
+  "https://customer-assets-eiarnc6j.emergentagent.net/job_portfolio-voice-chat/artifacts/el1wu9k9_Avatar.png";
 
 export function resolveProject(projectId) {
   if (!projectId || typeof projectId !== "string") return null;

@@ -24,6 +24,28 @@ All URLs, mappings, allow-lists, and copy live in **one file**:
 - `open_contact()`
 - `open_linkedin()`
 
+## ElevenLabs agent configuration (IMPORTANT)
+The agent is public (no signed URL required). If you have configured
+an **Allowlist** on the agent's *Security* tab, you MUST add the
+origin the widget is served from — for the current preview build:
+
+```
+portfolio-voice-chat.preview.emergentagent.com
+```
+
+…and, once you're ready to embed the widget on the live site:
+
+```
+preetyux.work
+www.preetyux.work
+```
+
+If the allowlist is empty the agent accepts any origin. Symptom of a
+missing allowlist entry: the session briefly reaches `connected` and
+then immediately drops with `Server error: Unknown error` / LiveKit
+data-channel abort. The widget will surface this as the red
+"Connection error. Please try again later." banner.
+
 ## Embedding on Framer
 See `frontend/src/lib/postMessage.js` for the message contract. Add an
 `<iframe allow="microphone; autoplay; clipboard-write">` on the Framer
