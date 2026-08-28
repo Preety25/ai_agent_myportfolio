@@ -1,15 +1,33 @@
 import React, { useState } from "react";
 import { ArrowUp, Mic } from "lucide-react";
+import { useSpeechToText } from "../../hooks/useSpeechToText";
 
-export const ChatInput = ({ onSend, onMicClick, onVoiceToggle, disabled }) => {
+export const ChatInput = ({ onSend, onVoiceToggle, disabled, onMicError }) => {
   const [value, setValue] = useState("");
+
+  const { isListening, isSupported, toggle } = useSpeechToText({
+    onResult: (t) => setValue(t),
+    onError: (e) => {
+      const denied =
+        e && (e.error === "not-allowed" || e.error === "service-not-allowed");
+      if (onMicError) onMicError(denied ? "denied" : "error");
+    },
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const trimmed = value.trim();
+    const trimmed = (value || "").trim();
     if (!trimmed) return;
     onSend(trimmed);
     setValue("");
+  };
+
+  const handleMicClick = () => {
+    if (!isSupported) {
+      if (onMicError) onMicError("unsupported");
+      return;
+    }
+    toggle(value);
   };
 
   return (
@@ -22,7 +40,7 @@ export const ChatInput = ({ onSend, onMicClick, onVoiceToggle, disabled }) => {
           data-testid="pinky-text-input"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="Start typing..."
+          placeholder={isListening ? "Listening..." : "Start typing..."}
           disabled={disabled}
           className="flex-1 bg-transparent outline-none font-mono text-sm text-[#46454B] placeholder-[#B6A7E1] disabled:opacity-50"
         />
@@ -30,21 +48,30 @@ export const ChatInput = ({ onSend, onMicClick, onVoiceToggle, disabled }) => {
           type="submit"
           data-testid="pinky-send-button"
           aria-label="Send message"
-          disabled={disabled || !value.trim()}
+          disabled={disabled || !(value || "").trim()}
           className="w-8 h-8 rounded-full bg-lavender-400 hover:bg-lavender-500 disabled:opacity-40 flex items-center justify-center transition-colors"
         >
           <ArrowUp className="w-4 h-4 text-white" strokeWidth={2.5} />
         </button>
       </form>
 
+      {/* Mic (speech-to-text). Active = purple filled; Idle = light with purple icon. */}
       <button
         type="button"
         data-testid="pinky-mic-button"
-        onClick={onMicClick}
-        aria-label="Toggle microphone"
-        className="w-10 h-10 rounded-full bg-lavender-400 hover:bg-lavender-500 flex items-center justify-center transition-colors"
+        onClick={handleMicClick}
+        aria-label={isListening ? "Stop dictation" : "Start dictation"}
+        aria-pressed={isListening}
+        className={
+          "w-10 h-10 rounded-full flex items-center justify-center transition-colors border " +
+          (isListening
+            ? "bg-lavender-400 border-lavender-400 hover:bg-lavender-500"
+            : "bg-white border-lavender-300 hover:bg-lavender-50")
+        }
       >
-        <Mic className="w-4 h-4 text-white" />
+        <Mic
+          className={"w-4 h-4 " + (isListening ? "text-white" : "text-lavender-400")}
+        />
       </button>
 
       <button

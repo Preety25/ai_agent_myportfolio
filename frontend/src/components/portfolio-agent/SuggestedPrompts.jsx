@@ -11,7 +11,10 @@ export const SuggestedPrompts = ({ onSelect }) => (
         key={prompt}
         data-testid={`pinky-prompt-${prompt.replace(/\s+/g, "-").toLowerCase()}`}
         onClick={() => onSelect(prompt)}
-        className="font-mono text-sm text-lavender-500 border border-lavender-400 rounded-full px-4 py-2 hover:bg-lavender-50 transition-colors"
+        className="font-mono text-sm rounded-full px-4 py-2 transition-colors"
+        style={{ color: "#F47A7B", border: "1px solid #F47A7B", background: "white" }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "#FFF1F0"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = "white"; }}
       >
         {prompt}
       </button>

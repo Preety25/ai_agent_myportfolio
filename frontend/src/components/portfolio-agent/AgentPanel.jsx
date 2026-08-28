@@ -5,6 +5,7 @@ import {
   useConversationMode,
   useConversationInput,
 } from "@elevenlabs/react";
+import { X } from "lucide-react";
 import { AgentHeader } from "./AgentHeader";
 import { AgentStatus } from "./AgentStatus";
 import { ConversationTranscript } from "./ConversationTranscript";
@@ -12,21 +13,17 @@ import { SuggestedPrompts } from "./SuggestedPrompts";
 import { ChatInput } from "./ChatInput";
 import { VoiceOrb } from "./VoiceOrb";
 import { ConversationControls } from "./ConversationControls";
-import { SessionRecap } from "./SessionRecap";
+import { CloseConfirm } from "./CloseConfirm";
 import { AGENT_ID } from "../../config/agent.config";
 import { usePortfolioTools } from "../../hooks/usePortfolioTools";
 
 /**
  * Panel state machine.
+ *  - "idle"  → no ElevenLabs session
+ *  - "text"  → SDK session running for text conversation (mic muted)
+ *  - "voice" → SDK session with mic enabled
  *
- * `sessionMode` is owned by the parent so it can survive open/close.
- *  - "idle"  → no ElevenLabs session, no microphone permission.
- *  - "text"  → text-mode ElevenLabs session (WebSocket).
- *  - "voice" → voice ElevenLabs session (WebRTC + microphone).
- *
- * We keep exactly one session at a time by binding the connect effect
- * to `sessionMode`. When it flips to text/voice we open a session; when
- * it flips back to idle we tear it down.
+ * Only one session is ever active at a time.
  */
 export const AgentPanel = ({
   sessionMode,
@@ -46,75 +43,53 @@ export const AgentPanel = ({
   const { mode, isSpeaking } = useConversationMode();
   const { setMuted } = useConversationInput();
 
-  const [error, setError] = useState(null);
-  const [micDenied, setMicDenied] = useState(false);
-  const [showRecap, setShowRecap] = useState(false);
+  const [error, setError] = useState(null);        // { text, kind: "network"|"mic" }
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const consumedRef = useRef(null);
+  const wasConnectedRef = useRef(false);
 
   usePortfolioTools({ onToolInvoked });
 
-  /* Single connect effect. Bound only to sessionMode so it fires
-     exactly once per mode transition. */
+  /* Single connect effect — fires exactly once per mode transition */
   useEffect(() => {
     if (sessionMode === "idle") {
-      // Ensure no orphan session lingers
       try { endSession(); } catch (e) { /* silent */ }
+      wasConnectedRef.current = false;
       return;
     }
-
     let cancelled = false;
     setError(null);
-    setMicDenied(false);
 
-    const connect = async () => {
+    (async () => {
       try {
         if (sessionMode === "voice") {
           await navigator.mediaDevices.getUserMedia({ audio: true });
         }
         if (cancelled) return;
-        // Note: we do NOT send the pending user message inline here.
-        // The SDK's `startSession` promise resolves before the session
-        // is fully registered internally, so a `sendUserMessage` here
-        // races with the SDK's setup and throws "No active
-        // conversation". Instead we wait for `status === "connected"`
-        // in the effect below.
         await startSession({ agentId: AGENT_ID });
-        if (cancelled) return;
-        // (mic mute + pending-message dispatch happen in the
-        // status-based effect below once we actually reach
-        // `connected`.)
       } catch (e) {
         if (cancelled) return;
-        // eslint-disable-next-line no-console
-        console.error("[pinky] startSession failed", e);
         if (e && (e.name === "NotAllowedError" || e.name === "SecurityError")) {
-          setMicDenied(true);
+          setError({ kind: "mic", text: "Microphone access is off. Please allow access." });
         } else {
-          setError("Connection error. Please try again later.");
+          // eslint-disable-next-line no-console
+          console.error("[pinky] startSession failed", e);
+          setError({ kind: "network", text: "Connection error. Please try again later." });
         }
       }
-    };
-    connect();
+    })();
 
-    return () => {
-      cancelled = true;
-    };
-    // We intentionally do not include pendingMessage/sendUserMessage/
-    // startSession/endSession/onPendingConsumed as deps — this effect
-    // should only re-run when the user explicitly changes sessionMode.
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionMode]);
 
-  /* Once we're connected, dispatch any *subsequent* pending message
-     (i.e. the user typed a second message while the session was
-     already open). Also apply the desired mic mute state for the
-     current mode. */
+  /* On `connected`, mute mic in text mode & dispatch any pending text */
   useEffect(() => {
     if (sessionMode === "idle") return;
     if (status !== "connected") return;
 
-    // Mute mic in text mode; unmute in voice mode.
     try { setMuted(sessionMode === "text"); } catch (e) { /* silent */ }
+    wasConnectedRef.current = true;
 
     if (sessionMode !== "text") return;
     if (!pendingMessage) return;
@@ -125,74 +100,67 @@ export const AgentPanel = ({
       onPendingConsumed && onPendingConsumed();
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.error("[pinky] sendUserMessage (post-connect) failed", e);
+      console.error("[pinky] sendUserMessage failed", e);
     }
   }, [sessionMode, status, pendingMessage, sendUserMessage, setMuted, onPendingConsumed]);
 
-  /* Detect unexpected disconnects. If we were connected in text/voice
-     mode and the session drops without user action, surface a friendly
-     error banner. */
-  const wasConnectedRef = useRef(false);
+  /* Detect unexpected disconnect */
   useEffect(() => {
-    if (status === "connected") wasConnectedRef.current = true;
     if (
       wasConnectedRef.current &&
       status === "disconnected" &&
-      sessionMode !== "idle" &&
-      !showRecap
+      sessionMode !== "idle"
     ) {
-      setError("Connection error. Please try again later.");
+      setError({ kind: "network", text: "Connection error. Please try again later." });
       wasConnectedRef.current = false;
     }
-  }, [status, sessionMode, showRecap]);
+  }, [status, sessionMode]);
 
-  /* Handlers */
-  const handleStop = useCallback(() => {
-    setShowRecap(true);
-    onStopSession && onStopSession();
-  }, [onStopSession]);
+  const handleCloseButton = useCallback(() => {
+    // If nothing has happened yet, just close without asking
+    if (!messages || messages.length === 0) {
+      onClose && onClose();
+      return;
+    }
+    setShowCloseConfirm(true);
+  }, [messages, onClose]);
 
-  const handleClose = useCallback(() => {
+  const handleConfirmClose = useCallback(() => {
+    setShowCloseConfirm(false);
     onClose && onClose();
   }, [onClose]);
 
-  const handleRestart = useCallback(() => {
-    clearMessages && clearMessages();
-    setShowRecap(false);
-    setError(null);
-    setMicDenied(false);
-  }, [clearMessages]);
+  const handleCancelClose = useCallback(() => setShowCloseConfirm(false), []);
+
+  const handleMicError = useCallback((kind) => {
+    if (kind === "denied") {
+      setError({ kind: "mic", text: "Microphone access is off. Please allow access." });
+    } else if (kind === "unsupported") {
+      setError({ kind: "mic", text: "Dictation isn't supported in this browser." });
+    } else {
+      setError({ kind: "mic", text: "Something went wrong with the microphone." });
+    }
+  }, []);
+
+  const handleStopVoice = useCallback(() => {
+    onStopSession && onStopSession();
+  }, [onStopSession]);
 
   const handleVoiceToggle = useCallback(() => {
-    if (sessionMode === "voice") {
-      onStopSession && onStopSession();
-    } else {
-      onStartVoice && onStartVoice();
-    }
+    if (sessionMode === "voice") onStopSession && onStopSession();
+    else onStartVoice && onStartVoice();
   }, [sessionMode, onStartVoice, onStopSession]);
 
   const isVoice = sessionMode === "voice";
-  const showBanner = error || micDenied;
 
   return (
     <div
       data-testid="pinky-agent-panel"
       className="fixed z-[9999] pinky-panel shadow-2xl border border-lavender-100 flex flex-col overflow-visible animate-in fade-in slide-in-from-bottom-4 duration-300 rounded-[28px]"
     >
-      <AgentHeader onClose={handleClose} />
+      <AgentHeader onClose={handleCloseButton} />
 
-      {showBanner && (
-        <div
-          data-testid="pinky-error-banner"
-          className="mx-5 mt-3 px-4 py-2 rounded-full bg-coral-400 text-white font-mono text-sm text-center"
-        >
-          {micDenied
-            ? "Microphone access is off. Please allow access."
-            : error}
-        </div>
-      )}
-
-      {!showBanner && !showRecap && sessionMode !== "idle" && (
+      {!showCloseConfirm && sessionMode !== "idle" && !error && (
         <AgentStatus status={status} mode={mode} />
       )}
 
@@ -206,27 +174,47 @@ export const AgentPanel = ({
             messages={messages}
             onToolClick={onToolClick}
           />
-          {showRecap && (
-            <SessionRecap messages={messages} onRestart={handleRestart} />
-          )}
         </div>
       )}
 
-      {messages.length === 0 && !isVoice && !showRecap && (
+      {messages.length === 0 && !isVoice && !showCloseConfirm && (
         <SuggestedPrompts onSelect={onSendText} />
       )}
 
-      {isVoice ? (
-        <ConversationControls onStop={handleStop} />
+      {/* Error banner sits ABOVE the action bar (per Figma) */}
+      {error && !showCloseConfirm && (
+        <div
+          data-testid="pinky-error-banner"
+          className="mx-5 mb-2 px-4 py-2 rounded-full text-white font-mono text-sm flex items-center justify-between gap-3"
+          style={{ background: "#FF3333" }}
+        >
+          <span className="flex-1 text-center">{error.text}</span>
+          <button
+            type="button"
+            aria-label="Dismiss error"
+            onClick={() => setError(null)}
+            className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-white/20"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+
+      {showCloseConfirm ? (
+        <CloseConfirm
+          messages={messages}
+          onCancel={handleCancelClose}
+          onConfirmClose={handleConfirmClose}
+        />
+      ) : isVoice ? (
+        <ConversationControls onStop={handleStopVoice} />
       ) : (
-        !showRecap && (
-          <ChatInput
-            onSend={onSendText}
-            onMicClick={onStartVoice}
-            onVoiceToggle={handleVoiceToggle}
-            disabled={false}
-          />
-        )
+        <ChatInput
+          onSend={onSendText}
+          onVoiceToggle={handleVoiceToggle}
+          onMicError={handleMicError}
+          disabled={false}
+        />
       )}
     </div>
   );
