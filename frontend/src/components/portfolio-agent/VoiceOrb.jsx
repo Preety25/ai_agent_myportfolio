@@ -2,11 +2,11 @@ import React, { useEffect, useRef, useState } from "react";
 import { useConversationControls } from "@elevenlabs/react";
 
 /**
- * Large coral/pink gradient orb used in the voice-mode view.
- * Pulses on speaking state and reads live output-frequency data when
- * available.
+ * Large soft lavender→coral orb used in voice-mode. Reads live
+ * output/input frequency data through the SDK to breathe with the
+ * audio stream.
  */
-export const VoiceOrb = ({ isSpeaking, isListening }) => {
+export const VoiceOrb = ({ isSpeaking }) => {
   const { getOutputByteFrequencyData, getInputByteFrequencyData } =
     useConversationControls();
   const [level, setLevel] = useState(0);
@@ -25,9 +25,7 @@ export const VoiceOrb = ({ isSpeaking, isListening }) => {
           const avg = sum / data.length / 255;
           if (mounted) setLevel(avg);
         }
-      } catch (e) {
-        /* silent */
-      }
+      } catch (e) { /* silent */ }
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -37,31 +35,28 @@ export const VoiceOrb = ({ isSpeaking, isListening }) => {
     };
   }, [isSpeaking, getOutputByteFrequencyData, getInputByteFrequencyData]);
 
-  const scale = 1 + level * 0.25;
-  const glow = 20 + level * 60;
+  const scale = 1 + level * 0.22;
+  const glow = 30 + level * 60;
 
   return (
     <div
       data-testid="pinky-voice-orb"
       className="relative flex items-center justify-center w-full h-full"
     >
+      {/* Soft halo */}
       <div
-        className="absolute rounded-full bg-coral-100 blur-3xl transition-opacity duration-300"
-        style={{
-          width: 320,
-          height: 320,
-          opacity: 0.6 + level * 0.4,
-        }}
+        className="absolute rounded-full blur-3xl pinky-brand-gradient-soft transition-opacity duration-300"
+        style={{ width: 320, height: 320, opacity: 0.55 + level * 0.35 }}
       />
+      {/* Main orb */}
       <div
-        className="rounded-full transition-transform duration-100"
+        className="rounded-full transition-transform duration-100 pinky-brand-gradient-soft"
         style={{
           width: 220,
           height: 220,
-          background:
-            "radial-gradient(circle at 40% 40%, #FFC5C0 0%, #FF8A8A 45%, #FF6B6B 100%)",
           transform: `scale(${scale})`,
-          boxShadow: `0 0 ${glow}px rgba(255,107,107,0.55)`,
+          boxShadow: `0 0 ${glow}px rgba(182,167,225,0.45), inset 0 0 60px rgba(255,255,255,0.35)`,
+          filter: "blur(1px)",
         }}
       />
     </div>

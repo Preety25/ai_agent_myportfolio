@@ -1,20 +1,13 @@
 import React from "react";
 
 /**
- * Displays the current conversation status (connecting / listening /
- * speaking / error) with an animated indicator.
+ * Slim inline status pill. Errors are elevated to their own red pill
+ * banner from AgentPanel; this component only shows benign states.
  */
-export const AgentStatus = ({ status, mode, error, micDenied }) => {
+export const AgentStatus = ({ status, mode }) => {
   let label = null;
-  let tone = "info";
 
-  if (error) {
-    label = error;
-    tone = "error";
-  } else if (micDenied) {
-    label = "Microphone access is off. Please allow access.";
-    tone = "error";
-  } else if (status === "connecting") {
+  if (status === "connecting") {
     label = "Connecting...";
   } else if (status === "connected") {
     label = mode === "speaking" ? "Pinky is speaking..." : "Listening...";
@@ -22,23 +15,12 @@ export const AgentStatus = ({ status, mode, error, micDenied }) => {
 
   if (!label) return null;
 
-  if (tone === "error") {
-    return (
-      <div
-        data-testid="pinky-error-banner"
-        className="mx-5 my-2 px-4 py-2 rounded-full bg-red-500 text-white font-mono text-sm text-center"
-      >
-        {label}
-      </div>
-    );
-  }
-
   return (
     <div
       data-testid="pinky-status-banner"
-      className="mx-5 my-2 px-4 py-1.5 rounded-full bg-coral-50 text-coral-600 font-mono text-xs text-center inline-flex items-center gap-2 self-start"
+      className="mx-5 mt-2 px-4 py-1.5 rounded-full bg-lavender-100 text-lavender-500 font-mono text-xs inline-flex items-center gap-2 self-start w-fit"
     >
-      <span className="w-2 h-2 rounded-full bg-coral-400 animate-pulse" />
+      <span className="w-2 h-2 rounded-full bg-lavender-400 animate-pulse" />
       {label}
     </div>
   );

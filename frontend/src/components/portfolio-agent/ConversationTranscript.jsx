@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Message } from "./Message";
-import { INTRO_MESSAGE } from "../../config/agent.config";
+import { IntroMessage } from "./IntroMessage";
 
 export const ConversationTranscript = ({ messages, onToolClick }) => {
   const scrollerRef = useRef(null);
@@ -16,9 +16,7 @@ export const ConversationTranscript = ({ messages, onToolClick }) => {
       className="flex-1 overflow-y-auto px-5 pb-3 space-y-4"
       data-testid="pinky-transcript"
     >
-      <div className="text-neutral-900 font-mono text-sm leading-relaxed whitespace-pre-wrap">
-        {INTRO_MESSAGE}
-      </div>
+      <IntroMessage />
 
       {messages.map((m, i) => (
         <Message

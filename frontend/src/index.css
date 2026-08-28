@@ -4,17 +4,11 @@
 @tailwind components;
 @tailwind utilities;
 
-html,
-body,
-#root {
-    background: transparent;
-}
+html, body, #root { background: transparent; }
 
 body {
     margin: 0;
-    font-family:
-        "Space Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-        "Courier New", monospace;
+    font-family: "Space Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -22,51 +16,46 @@ body {
 @layer base {
     :root {
         --background: 24 100% 99%;
-        --foreground: 240 6% 10%;
+        --foreground: 245 6% 28%;              /* ink #46454B */
         --card: 0 0% 100%;
-        --card-foreground: 240 6% 10%;
+        --card-foreground: 245 6% 28%;
         --popover: 0 0% 100%;
-        --popover-foreground: 240 6% 10%;
-        --primary: 0 100% 71%;
+        --popover-foreground: 245 6% 28%;
+        --primary: 253 55% 77%;                /* lavender #B6A7E1 */
         --primary-foreground: 0 0% 100%;
-        --secondary: 252 82% 92%;
-        --secondary-foreground: 240 6% 10%;
+        --secondary: 0 82% 71%;                /* coral #EF7B7B */
+        --secondary-foreground: 0 0% 100%;
         --muted: 20 40% 96%;
         --muted-foreground: 240 4% 42%;
-        --accent: 0 100% 94%;
-        --accent-foreground: 0 100% 45%;
-        --destructive: 0 84% 60%;
+        --accent: 253 55% 92%;
+        --accent-foreground: 253 55% 40%;
+        --destructive: 0 82% 71%;
         --destructive-foreground: 0 0% 100%;
         --border: 240 5% 90%;
         --input: 240 5% 90%;
-        --ring: 0 100% 71%;
+        --ring: 253 55% 77%;
         --radius: 1rem;
     }
 }
 
 @layer base {
-    * {
-        @apply border-border;
-    }
-    body {
-        color: hsl(var(--foreground));
-    }
+    * { @apply border-border; }
+    body { color: hsl(var(--foreground)); }
 }
 
-/* Panel layout: floating card on desktop, bottom sheet on mobile */
+/* Panel: floating on desktop, bottom sheet on mobile */
 .pinky-panel {
     bottom: 1.5rem;
     right: 1.5rem;
     width: 400px;
     height: min(600px, 85vh);
     border-radius: 28px;
+    background: #FFFCFA;
 }
 
 @media (max-width: 640px) {
     .pinky-panel {
-        bottom: 0;
-        right: 0;
-        left: 0;
+        bottom: 0; right: 0; left: 0;
         width: 100%;
         height: 85vh;
         border-radius: 28px 28px 0 0;
@@ -75,12 +64,19 @@ body {
 
 /* Waveform bar animation */
 @keyframes pinky-bar {
-    from {
-        transform: scaleY(0.4);
-        opacity: 0.6;
-    }
-    to {
-        transform: scaleY(1.1);
-        opacity: 1;
-    }
+    from { transform: scaleY(0.35); opacity: 0.55; }
+    to   { transform: scaleY(1.1);  opacity: 1; }
+}
+
+/* Brand gradient used across orb, floating button, waveform */
+.pinky-brand-gradient {
+    background:
+      radial-gradient(circle at 30% 30%, rgba(182,167,225,0.85) 0%, rgba(182,167,225,0.55) 35%, rgba(239,123,123,0.55) 70%, rgba(239,123,123,0.75) 100%);
+}
+.pinky-brand-gradient-soft {
+    background:
+      radial-gradient(circle at 35% 35%, rgba(182,167,225,0.7) 0%, rgba(182,167,225,0.4) 40%, rgba(239,123,123,0.4) 75%, rgba(239,123,123,0.55) 100%);
+}
+.pinky-wave-gradient {
+    background: linear-gradient(90deg, rgba(182,167,225,0.8) 0%, rgba(239,123,123,0.8) 100%);
 }

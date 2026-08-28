@@ -11,7 +11,7 @@ export const SuggestedPrompts = ({ onSelect }) => (
         key={prompt}
         data-testid={`pinky-prompt-${prompt.replace(/\s+/g, "-").toLowerCase()}`}
         onClick={() => onSelect(prompt)}
-        className="font-mono text-sm text-coral-600 border border-coral-300 rounded-full px-4 py-2 hover:bg-coral-50 transition-colors"
+        className="font-mono text-sm text-lavender-500 border border-lavender-400 rounded-full px-4 py-2 hover:bg-lavender-50 transition-colors"
       >
         {prompt}
       </button>
