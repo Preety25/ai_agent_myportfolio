@@ -5,7 +5,7 @@ import { useSpeechToText } from "../../hooks/useSpeechToText";
 export const ChatInput = ({ onSend, onVoiceToggle, disabled, onMicError }) => {
   const [value, setValue] = useState("");
 
-  const { isListening, isSupported, toggle } = useSpeechToText({
+  const { isListening, isSupported, stop, toggle } = useSpeechToText({
     onResult: (t) => setValue(t),
     onError: (e) => {
       const denied =
@@ -16,6 +16,8 @@ export const ChatInput = ({ onSend, onVoiceToggle, disabled, onMicError }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    // Pressing send always ends dictation if it is running.
+    if (isListening) stop();
     const trimmed = (value || "").trim();
     if (!trimmed) return;
     onSend(trimmed);
