@@ -1,7 +1,7 @@
-"""Tests for /api/pinky/auth endpoint (ElevenLabs signed URL / WebRTC token).
-
-Iteration 3: API key now has convai_write permission, so we expect 200s
-with proper signed_url (text) and conversation_token (voice) payloads.
+"""Tests for /api/pinky/auth endpoint (ElevenLabs signed URL / WebRTC token)
+   plus core status endpoints. Iteration 5: verify NameError fix — logger
+   now defined at module top (lines ~19-23) so error branches at lines
+   113/131 can safely log without NameError.
 """
 import os
 import requests
@@ -9,12 +9,39 @@ import requests
 BASE_URL = os.environ["REACT_APP_BACKEND_URL"].rstrip("/")
 
 
-class TestPinkyAuth:
+# --- core routes ---
+class TestCore:
     def test_root(self):
         r = requests.get(f"{BASE_URL}/api/", timeout=15)
         assert r.status_code == 200
         assert r.json().get("message") == "Hello World"
 
+    def test_status_get_list(self):
+        r = requests.get(f"{BASE_URL}/api/status", timeout=15)
+        assert r.status_code == 200
+        assert isinstance(r.json(), list)
+
+    def test_status_post_and_persist(self):
+        r = requests.post(
+            f"{BASE_URL}/api/status",
+            json={"client_name": "TEST_deploy-test"},
+            timeout=15,
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["client_name"] == "TEST_deploy-test"
+        assert "id" in body and isinstance(body["id"], str)
+        assert "timestamp" in body
+
+        # verify persisted via GET
+        r2 = requests.get(f"{BASE_URL}/api/status", timeout=15)
+        assert r2.status_code == 200
+        ids = [item["id"] for item in r2.json()]
+        assert body["id"] in ids
+
+
+# --- Pinky auth endpoint ---
+class TestPinkyAuth:
     def test_text_mode_returns_signed_url(self):
         r = requests.get(f"{BASE_URL}/api/pinky/auth", params={"mode": "text"}, timeout=20)
         assert r.status_code == 200, f"Body: {r.text}"
