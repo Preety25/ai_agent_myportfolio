@@ -19,8 +19,8 @@ export const FloatingButton = ({ onClick, isActive, showNudge }) => {
     return () => clearTimeout(t);
   }, [showNudge, isActive]);
 
-  // Default 112px; active 88px (–24 px).
-  const size = isActive ? 88 : 112;
+  // Always 88px (matches shrunk active size)
+  const size = 88;
 
   return (
     <button
@@ -39,9 +39,9 @@ export const FloatingButton = ({ onClick, isActive, showNudge }) => {
       <div
         className={"relative w-full h-full " + (nudging ? "animate-pinky-nudge" : "")}
       >
-        {/* Halo */}
-        <div className="absolute inset-0 rounded-full blur-lg opacity-60 pinky-brand-gradient" />
-        <div className="absolute inset-2 rounded-full blur-sm opacity-70 pinky-brand-gradient" />
+        {/* Halo — kept inside the button bounds (no outer overflow) */}
+        <div className="absolute inset-1 rounded-full blur-sm opacity-60 pinky-brand-gradient" />
+        <div className="absolute inset-2 rounded-full blur-[2px] opacity-70 pinky-brand-gradient" />
 
         {/* Solid orb with brand gradient */}
         <div className="absolute inset-3 rounded-full pinky-brand-gradient shadow-[0_10px_40px_-8px_rgba(182,167,225,0.55)] overflow-hidden">
