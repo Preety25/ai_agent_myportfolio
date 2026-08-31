@@ -40,8 +40,8 @@ export const FloatingButton = ({ onClick, isActive, showNudge }) => {
         className={"relative w-full h-full " + (nudging ? "animate-pinky-nudge" : "")}
       >
         {/* Halo */}
-        <div className="absolute inset-0 rounded-full blur-2xl opacity-60 pinky-brand-gradient" />
-        <div className="absolute inset-2 rounded-full blur-md opacity-70 pinky-brand-gradient" />
+        <div className="absolute inset-0 rounded-full blur-lg opacity-60 pinky-brand-gradient" />
+        <div className="absolute inset-2 rounded-full blur-sm opacity-70 pinky-brand-gradient" />
 
         {/* Solid orb with brand gradient */}
         <div className="absolute inset-3 rounded-full pinky-brand-gradient shadow-[0_10px_40px_-8px_rgba(182,167,225,0.55)] overflow-hidden">

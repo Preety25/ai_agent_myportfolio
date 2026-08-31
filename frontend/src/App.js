@@ -14,7 +14,7 @@ import PortfolioAgent from "@/components/portfolio-agent/PortfolioAgent";
  *     when open.
  */
 const CLOSED_SIZE = { w: 148, h: 148 };  // floating orb + halo
-const OPEN_SIZE   = { w: 448, h: 728 };  // panel + gap + shrunk button
+const OPEN_SIZE   = { w: 480, h: 760 };  // panel + shadow + overhang close btn
 
 function postToParent(type, payload = {}) {
   try {
