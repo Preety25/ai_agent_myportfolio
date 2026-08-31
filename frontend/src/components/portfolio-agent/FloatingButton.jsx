@@ -24,6 +24,7 @@ export const FloatingButton = ({ onClick, isActive, showNudge }) => {
 
   return (
     <button
+      id="pinky-agent-trigger"
       data-testid="pinky-floating-button"
       onClick={onClick}
       aria-label="Open Pinky, Preeti's portfolio assistant"

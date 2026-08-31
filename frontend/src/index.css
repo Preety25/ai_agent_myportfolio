@@ -6,6 +6,17 @@
 
 html, body, #root { background: transparent; }
 
+/* Embedded mode: the loader (/widget.js) sizes the iframe exactly to
+   the visible widget, so the whole surface can already receive
+   pointer events — but we still keep the root background transparent
+   so it doesn't paint a solid rectangle over the parent page. */
+body.pinky-embedded,
+body.pinky-embedded #root,
+body.pinky-embedded .App {
+    background: transparent;
+    min-height: 0;
+}
+
 body {
     margin: 0;
     font-family: "Space Mono", ui-monospace, SFMono-Regular, Menlo, monospace;

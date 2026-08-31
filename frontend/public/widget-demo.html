@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ask Pinky — Widget Demo</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: #FFFCFA;
+        color: #46454B;
+        min-height: 100vh;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 64px 24px 200px;
+      }
+      h1 { font-size: 34px; margin: 0 0 12px; }
+      p  { line-height: 1.6; color: #46454B; }
+      section {
+        margin-top: 48px;
+        padding: 24px;
+        border-radius: 20px;
+        background: #FFF;
+        box-shadow: 0 2px 20px -8px rgba(0,0,0,0.08);
+      }
+      code {
+        background: #F5F2FB; padding: 2px 6px; border-radius: 6px;
+        font-family: "Space Mono", monospace; font-size: 13px;
+      }
+      pre {
+        background: #F5F2FB; padding: 16px; border-radius: 10px;
+        overflow-x: auto; font-family: "Space Mono", monospace;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Widget embed test page</h1>
+      <p>
+        This page loads <code>/widget.js</code> the same way a Framer
+        site would. You should see the <b>Ask Pinky</b> floating orb in
+        the bottom-right of the viewport.
+      </p>
+
+      <section id="about">
+        <h2>About</h2>
+        <p>
+          When Pinky opens a case-study or the resume link, it fires a
+          <code>postMessage</code> the loader script listens to and
+          navigates the parent page — that's this document.
+        </p>
+      </section>
+
+      <section id="work">
+        <h2>Work</h2>
+        <p>Section anchored to <code>#work</code>.</p>
+      </section>
+
+      <section id="connect">
+        <h2>Connect</h2>
+        <p>Section anchored to <code>#connect</code>.</p>
+      </section>
+
+      <h2 style="margin-top:64px">Embed snippet</h2>
+      <pre>&lt;script
+  src="https://YOUR-WIDGET-HOST/widget.js"
+  data-resume="https://preetyux.work/cv_preeti-shah_2026.pdf"
+  data-linkedin="https://www.linkedin.com/in/preeti25/"
+  async&gt;&lt;/script&gt;</pre>
+    </main>
+
+    <script
+      src="/widget.js"
+      data-resume="https://preetyux.work/cv_preeti-shah_2026.pdf"
+      data-linkedin="https://www.linkedin.com/in/preeti25/"
+      async
+    ></script>
+  </body>
+</html>
