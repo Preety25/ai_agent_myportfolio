@@ -80,7 +80,7 @@
       "height:" + CLOSED.h + "px",
       "border:0",
       "background:transparent",
-      "z-index:2147483000",
+      "z-index:999999",
       "pointer-events:auto",
       "color-scheme:normal",
       "transition:width 220ms ease, height 220ms ease",
