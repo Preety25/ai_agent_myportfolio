@@ -148,11 +148,114 @@
     ensureDomWatcher();
   }
 
+  // ------------------------------------------------------------------
+  // DIAGNOSTIC INSTRUMENTATION (temporary — remove once root cause is
+  // known). Records every context signal that could identify who or
+  // what is removing #pinky-agent-iframe from the parent DOM.
+  // ------------------------------------------------------------------
+  var LOAD_TS = Date.now();
+  var lastFramerRoute = window.location.href;
+  var lastRouteChangeTs = 0;
+  var lastVisibilityChangeTs = 0;
+  var lastVisibilityState = document.visibilityState;
+
+  // Track SPA route changes (Framer uses history.pushState / replaceState).
+  ["pushState", "replaceState"].forEach(function (fn) {
+    var orig = history[fn];
+    history[fn] = function () {
+      lastRouteChangeTs = Date.now();
+      log("info", "diag: history." + fn + " → " + arguments[2]);
+      return orig.apply(this, arguments);
+    };
+  });
+  window.addEventListener("popstate", function () {
+    lastRouteChangeTs = Date.now();
+    log("info", "diag: popstate → " + window.location.href);
+  });
+  window.addEventListener("hashchange", function (e) {
+    lastRouteChangeTs = Date.now();
+    log("info", "diag: hashchange → " + e.newURL);
+  });
+  window.addEventListener("beforeunload", function () {
+    log("warn", "diag: beforeunload fired — full page navigation in progress");
+  });
+  window.addEventListener("pagehide", function (e) {
+    log("warn", "diag: pagehide fired (persisted=" + e.persisted + ")");
+  });
+  document.addEventListener("visibilitychange", function () {
+    lastVisibilityChangeTs = Date.now();
+    lastVisibilityState = document.visibilityState;
+    log("info", "diag: visibilitychange → " + document.visibilityState);
+  });
+
+  function classifyRemoval(mutation) {
+    var now = Date.now();
+    var sinceLoad = now - LOAD_TS;
+    var sinceRoute = lastRouteChangeTs ? (now - lastRouteChangeTs) : null;
+    var sinceVis  = lastVisibilityChangeTs ? (now - lastVisibilityChangeTs) : null;
+    var stack;
+    try { throw new Error("iframe-removal-trace"); }
+    catch (e) { stack = e.stack || "(no stack)"; }
+
+    var suspect = "unknown";
+    if (sinceRoute !== null && sinceRoute < 500) {
+      suspect = "framer_route_change (route changed " + sinceRoute + "ms ago → " + window.location.href + ")";
+    } else if (document.readyState === "loading") {
+      suspect = "parent_html_still_parsing";
+    } else if (mutation && mutation.target && mutation.target !== document.body) {
+      suspect = "non_body_mutation (target=" + describeNode(mutation.target) + ")";
+    } else if (sinceVis !== null && sinceVis < 1000) {
+      suspect = "visibility_change (state=" + lastVisibilityState + ")";
+    } else {
+      suspect = "third_party_script_or_framer_rerender";
+    }
+
+    console.groupCollapsed(
+      "%c[pinky-widget] IFRAME REMOVED — suspect: " + suspect,
+      "color:#c33;font-weight:bold"
+    );
+    console.log("URL at removal        :", window.location.href);
+    console.log("Referrer              :", document.referrer);
+    console.log("document.readyState   :", document.readyState);
+    console.log("document.visibilityState:", document.visibilityState);
+    console.log("ms since loader init  :", sinceLoad);
+    console.log("ms since last route   :", sinceRoute);
+    console.log("ms since visibility   :", sinceVis);
+    console.log("mutation.target       :", mutation ? describeNode(mutation.target) : "(none)");
+    console.log("mutation.removedNodes :", mutation ? Array.prototype.map.call(mutation.removedNodes, describeNode) : "(none)");
+    console.log("ancestry (body children ids/classes):", Array.prototype.slice.call(document.body.children).slice(0, 20).map(describeNode));
+    console.log("stack trace (who triggered the mutation):\n" + stack);
+    console.groupEnd();
+  }
+
+  function describeNode(n) {
+    if (!n) return "(null)";
+    if (n.nodeType === 3) return "#text";
+    var t = (n.tagName || "").toLowerCase();
+    var id = n.id ? "#" + n.id : "";
+    var cls = n.className && typeof n.className === "string"
+      ? "." + n.className.trim().split(/\s+/).slice(0, 3).join(".")
+      : "";
+    return t + id + cls;
+  }
+
   // If some parent-page script (Framer editor, ad blocker rewrite, etc.)
   // removes the iframe node, quietly re-inject it.
   function ensureDomWatcher() {
     if (domObserver || !document.body) return;
-    domObserver = new MutationObserver(function () {
+    domObserver = new MutationObserver(function (mutations) {
+      // First: forensic logging on ANY mutation where our iframe was in
+      // the removedNodes list, even if it's already been replaced.
+      for (var i = 0; i < mutations.length; i++) {
+        var m = mutations[i];
+        for (var j = 0; j < m.removedNodes.length; j++) {
+          var n = m.removedNodes[j];
+          if (n && n.id === "pinky-agent-iframe") {
+            classifyRemoval(m);
+          }
+        }
+      }
+      // Then: keep the existing recovery behaviour untouched.
       if (!document.getElementById("pinky-agent-iframe")) {
         log("warn", "iframe was removed from DOM — re-injecting");
         loadAttempt = 0;
@@ -160,7 +263,9 @@
         inject();
       }
     });
-    domObserver.observe(document.body, { childList: true, subtree: false });
+    // Observe body + subtree so we catch Framer wrapping/replacing
+    // ancestor nodes (which would remove the iframe as a side-effect).
+    domObserver.observe(document.body, { childList: true, subtree: true });
   }
 
   if (document.readyState === "loading") {
