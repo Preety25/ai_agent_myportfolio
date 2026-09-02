@@ -1,4 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Query
+from fastapi.responses import Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -73,6 +74,32 @@ async def get_status_checks():
             check['timestamp'] = datetime.fromisoformat(check['timestamp'])
     
     return status_checks
+
+
+# ---------------------------------------------------------------------------
+# Widget loader — served from the backend so we can attach the
+# Cross-Origin-Resource-Policy header required by COEP-enforcing parents
+# (e.g. preetyux.work / Framer). File contents are unchanged; only
+# headers are added. Works identically on preview + production because
+# both hosts route /api/* to this FastAPI service.
+# ---------------------------------------------------------------------------
+_WIDGET_JS_PATH = ROOT_DIR.parent / "frontend" / "public" / "widget.js"
+
+
+@api_router.get("/widget.js")
+async def get_widget_js():
+    try:
+        body = _WIDGET_JS_PATH.read_bytes()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="widget.js not found")
+    return Response(
+        content=body,
+        media_type="application/javascript; charset=utf-8",
+        headers={
+            "Cross-Origin-Resource-Policy": "cross-origin",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
+    )
 
 
 # ---------------------------------------------------------------------------
