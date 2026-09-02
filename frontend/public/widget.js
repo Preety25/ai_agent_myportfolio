@@ -62,13 +62,64 @@
   // its halo. Grows to whatever the widget requests via RESIZE.
   var CLOSED = { w: 148, h: 148 };
   var iframe;
+  var readyReceived = false;
+  var loadAttempt = 0;
+  var MAX_ATTEMPTS = 6;
+  var readyWatchdog = null;
+  var domObserver = null;
+
+  function log(kind, msg, err) {
+    try {
+      var line = "[pinky-widget] " + msg;
+      if (kind === "error") console.error(line, err || "");
+      else if (kind === "warn") console.warn(line);
+      else console.info(line);
+    } catch (e) { /* noop */ }
+  }
+
+  function buildSrc() {
+    // Add a per-injection cache-buster so a stale index.html/bundle
+    // reference never gets served to the parent — the app itself is
+    // always at the same origin/path, so the URL remains stable across
+    // Emergent redeployments.
+    return WIDGET_ORIGIN + "/?embed=1&v=" + Date.now();
+  }
+
+  function armReadyWatchdog() {
+    if (readyWatchdog) clearTimeout(readyWatchdog);
+    readyWatchdog = setTimeout(function () {
+      if (!readyReceived) {
+        log("warn", "iframe did not signal READY within 15s — retrying");
+        retry();
+      }
+    }, 15000);
+  }
+
+  function retry() {
+    if (loadAttempt >= MAX_ATTEMPTS) {
+      log("error", "giving up after " + MAX_ATTEMPTS + " load attempts");
+      return;
+    }
+    loadAttempt += 1;
+    if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    iframe = null;
+    readyReceived = false;
+    // Exponential backoff: 500ms, 1s, 2s, 4s, 8s, 16s (capped)
+    var wait = Math.min(500 * Math.pow(2, loadAttempt - 1), 16000);
+    setTimeout(inject, wait);
+  }
 
   function inject() {
     if (document.getElementById("pinky-agent-iframe")) return;
+    if (!document.body) {
+      // Body not ready yet — retry shortly
+      setTimeout(inject, 50);
+      return;
+    }
     iframe = document.createElement("iframe");
     iframe.id = "pinky-agent-iframe";
     iframe.title = "Ask Pinky";
-    iframe.src = WIDGET_ORIGIN + "/?embed=1";
+    iframe.src = buildSrc();
     iframe.setAttribute("allow",
       "microphone; autoplay; clipboard-write; clipboard-read");
     iframe.setAttribute("scrolling", "no");
@@ -85,7 +136,31 @@
       "color-scheme:normal",
       "transition:width 220ms ease, height 220ms ease",
     ].join(";");
+    iframe.addEventListener("error", function (e) {
+      log("error", "iframe failed to load", e);
+      retry();
+    });
+    iframe.addEventListener("load", function () {
+      log("info", "iframe loaded from " + WIDGET_ORIGIN);
+    });
     document.body.appendChild(iframe);
+    armReadyWatchdog();
+    ensureDomWatcher();
+  }
+
+  // If some parent-page script (Framer editor, ad blocker rewrite, etc.)
+  // removes the iframe node, quietly re-inject it.
+  function ensureDomWatcher() {
+    if (domObserver || !document.body) return;
+    domObserver = new MutationObserver(function () {
+      if (!document.getElementById("pinky-agent-iframe")) {
+        log("warn", "iframe was removed from DOM — re-injecting");
+        loadAttempt = 0;
+        readyReceived = false;
+        inject();
+      }
+    });
+    domObserver.observe(document.body, { childList: true, subtree: false });
   }
 
   if (document.readyState === "loading") {
@@ -116,7 +191,10 @@
 
     switch (data.type) {
       case "READY":
-        // nothing to do; iframe is already visible
+        readyReceived = true;
+        loadAttempt = 0;
+        if (readyWatchdog) { clearTimeout(readyWatchdog); readyWatchdog = null; }
+        log("info", "widget READY");
         return;
       case "RESIZE": {
         if (!iframe) return;
