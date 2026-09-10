@@ -32,22 +32,19 @@ export const PROJECTS = {
     id: "absorb",
     title: "Absorb Case study",
     url: "https://preetyux.work/absorb-case-study",
-    thumbnail:
-      "https://customer-assets-eiarnc6j.emergentagent.net/job_portfolio-voice-chat/artifacts/lm7qn7lw_Mockup_Absorb.webp",
+    thumbnail: "/assets/absorb.webp",
   },
   omnee: {
     id: "omnee",
     title: "Omnee Case study",
     url: "https://preetyux.work/omnee",
-    thumbnail:
-      "https://customer-assets-eiarnc6j.emergentagent.net/job_portfolio-voice-chat/artifacts/zgfb9bf0_Omnee_mockup.webp",
+    thumbnail: "/assets/omnee.webp",
   },
   manulife: {
     id: "manulife",
     title: "Manulife Case study",
     url: "https://preetyux.work/manulife",
-    thumbnail:
-      "https://customer-assets-eiarnc6j.emergentagent.net/job_portfolio-voice-chat/artifacts/5yig11kj_Manulife_mockup.webp",
+    thumbnail: "/assets/manulife.webp",
   },
 };
 
@@ -85,8 +82,7 @@ export const SUGGESTED_PROMPTS = [
 export const INTRO_MESSAGE =
   "I am Pinky, Preeti's portfolio twin...\n\nAsk me anything about her work or experience and I'll do my best to answer!";
 
-export const AVATAR_URL =
-  "https://customer-assets-eiarnc6j.emergentagent.net/job_portfolio-voice-chat/artifacts/el1wu9k9_Avatar.png";
+export const AVATAR_URL = "/assets/avatar.png";
 
 export function resolveProject(projectId) {
   if (!projectId || typeof projectId !== "string") return null;
