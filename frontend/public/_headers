@@ -1,0 +1,16 @@
+# Cloudflare Pages response headers.
+# https://developers.cloudflare.com/pages/configuration/headers/
+
+# The embeddable widget loader is fetched from Framer / preetyux.work
+# (a different origin). Modern browsers enforcing COEP will block the
+# response unless we explicitly opt into cross-origin loading.
+# Also disable caching while we iterate on the widget.
+/widget.js
+  Cross-Origin-Resource-Policy: cross-origin
+  Cache-Control: no-cache, no-store, must-revalidate
+  Content-Type: application/javascript; charset=utf-8
+
+# The React app is loaded inside an iframe from the same parent site,
+# so allow embedding and permit the parent to read the frame.
+/*
+  Cross-Origin-Resource-Policy: cross-origin
